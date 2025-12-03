@@ -1,14 +1,15 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File
 from app.config.settings import settings
-from app.db.db import SessionLocal, get_session
 from app.db.models import User
+from app.db.models.job import Job
+from app.db.db import get_session
 import uuid
+from datetime import datetime
 from app.rq.rq import queue
 from loguru import logger
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 from rq import Retry
 from rq_dashboard_fast import RedisQueueDashboard
+from app.service.csv_service import dump_csv, FILE_UPLOAD_DIR
 dashboard = RedisQueueDashboard(settings.redis_url, "/rq")
 
 app = FastAPI(
@@ -17,36 +18,32 @@ app = FastAPI(
 
 app.mount("/rq", dashboard)
 
-def count_words_at_url(url):
-    """Just an example function that's called async."""
-    logger.info("Counting words at")
-    engine = create_engine(
-        settings.pg_url,
-        pool_size=10,
-        max_overflow=20,
-        future=True,   # modern 2.0 style if using SQLAlchemy 1.4+
-    )
+@app.post("/upload-csv")
+async def uploadcsv(
+    transactions: UploadFile = File(...),
+    users: UploadFile = File(...),
+):
+    # Dump both files to disk in a single call
+    job = queue.enqueue(dump_csv, transactions, users, retry=Retry(max=3, interval=[10, 30, 60]))
 
-    # session factory
-    SessionLocal = sessionmaker(bind=engine, autoflush=True, autocommit=False, expire_on_commit=False)
-    session = SessionLocal()
-    new_user = User(
-        username=f"test{uuid.uuid4()}",
-        region="test",
-        is_active_sub=False,
-    )
-    session.add(new_user)
-    session.commit()
-    session.close()
-    
-    return len(url.split())
-
-@app.get("/")
-async def read_root():
-    logger.info(f"request / endpoint!")
-    job = queue.enqueue(count_words_at_url, 'https://stamps.id', retry=Retry(max=3, interval=[10, 30, 60]))
-    # create_user()
-    logger.info(f"Enqueued job: {job}")
+    # Create a corresponding DB Job record
     with get_session() as session:
-        users = session.query(User).all()
-        return {"users": users}
+        db_job = Job(
+            id=uuid.uuid4(),
+            file_location=str(FILE_UPLOAD_DIR),
+            filename=f"{transactions.filename},{users.filename}",
+            total_rows=0,
+            processed_rows=0,
+            error=None,
+            processed_at=None,
+            job_metadata={"rq_job_id": job.id},
+        )
+        session.add(db_job)
+        session.commit()
+
+    return {
+        "message": "success",
+        "data": {
+            "job_id": str(db_job.id),
+        },
+    }
