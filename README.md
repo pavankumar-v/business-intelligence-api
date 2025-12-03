@@ -11,7 +11,7 @@ This is the backend for the business intelligence application.
 - RQ Monitor (Task Queue Monitor)
 
 ## Architecture
-
+Tool: excalidraw
 <img width="1222" height="632" alt="Screenshot 2025-12-02 at 10 40 38 PM" src="https://github.com/user-attachments/assets/81f74c65-2bd1-4005-a575-2ba76488b0bc" />
 
 ```
