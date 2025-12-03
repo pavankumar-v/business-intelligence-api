@@ -1,6 +1,6 @@
 from sqlalchemy.orm import relationship
 from app.db.base import Base
-from sqlalchemy import JSON, UUID, Column, String, Float, DateTime, Integer, ForeignKey, Text
+from sqlalchemy import JSON, UUID, Column, String, Float, DateTime, Integer, ForeignKey, Text, func
 
 class Job(Base):
     __tablename__ = "jobs"
@@ -13,5 +13,6 @@ class Job(Base):
     error = Column(Text)
     job_metadata = Column(JSON)
     processed_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=func.now(), nullable=False)
+
     
