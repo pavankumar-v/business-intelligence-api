@@ -5,6 +5,9 @@ from fastapi import UploadFile
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 UPLOAD_DIR = BASE_DIR / "uploads"
 
+# Public constant for other modules to use
+FILE_UPLOAD_DIR = UPLOAD_DIR
+
 # Ensure uploads directory exists
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
