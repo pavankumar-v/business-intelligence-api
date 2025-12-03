@@ -62,6 +62,62 @@ Upload → Job Created → Queue Tasks → Worker Processes → DB Updated → W
 
 ## Database Design
 
+The database is implemented in PostgreSQL using SQLAlchemy models in `app/db/models`.
+
+```
+             ┌───────────────┐            1        *
+             │    users      │────────────┬────────────┐
+             │   (User)      │            │            │
+             ├───────────────┤            │            │
+             │ id (PK, UUID) │            │            │
+             │ username      │            │            │
+             │ region        │            │            │
+             │ ...           │            │            │
+             └───────────────┘            │            │
+                                          │            │
+                                          ▼            │
+                                   ┌───────────────┐   │
+                                   │ transactions  │   │
+                                   │ (Transaction) │   │
+                                   ├───────────────┤   │
+                                   │ id (PK)       │   │
+                                   │ user_id (FK)  │◀──┘
+                                   │ model_name    │
+                                   │ token_count   │
+                                   │ cost fields   │
+                                   │ timestamp     │
+                                   └───────────────┘
+
+
+    ┌───────────────┐          Aggregates from `transactions` (per job run)
+    │     jobs      │
+    │    (Job)      │
+    ├───────────────┤
+    │ id (PK)       │
+    │ filename      │
+    │ total_rows    │
+    │ processed_*   │
+    │ job_metadata  │
+    └───────────────┘
+
+
+   Per-day aggregates (dashboard KPIs)
+
+   ┌───────────────────────┐   ┌───────────────────────────┐   ┌───────────────────────────┐
+   │   daily_metrics       │   │   daily_company_metrics   │   │   daily_model_metrics     │
+   │    (DailyMetric)     │   │ (DailyCompanyMetric)      │   │  (DailyModelMetric)       │
+   ├───────────────────────┤   ├───────────────────────────┤   ├───────────────────────────┤
+   │ date, region (PK)     │   │ date, company_name (PK)   │   │ date, region, model (PK)  │
+   │ KPIs (avg_spend, ...)│   │ total_cost, conv_count    │   │ total_cost, conv_count    │
+   └───────────────────────┘   └───────────────────────────┘   └───────────────────────────┘
+
+```
+
+High level:
+- **users** and **transactions** capture raw usage.
+- **jobs** represent CSV ingestion/processing runs.
+- Daily aggregate tables power the dashboard KPIs.
+
 ## Setup
 
 ```bash
