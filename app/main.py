@@ -1,10 +1,13 @@
-from fastapi import FastAPI, UploadFile, File
+from time import sleep
+from typing import Dict, List
+from fastapi import FastAPI, UploadFile, File, WebSocket
 from app.config.settings import settings
 from app.db.models import User
 from app.db.models.job import Job
 from app.db.db import get_session
 import uuid
 from datetime import datetime
+from app.etl.daily_metrics_etl import aggregate_daily_metrics
 from app.rq.rq import queue
 from loguru import logger
 from rq import Retry
@@ -19,6 +22,8 @@ app = FastAPI(
 )
 
 app.mount("/rq", dashboard)
+
+active_connections: Dict[str, List[WebSocket]] = {}
 
 @app.post("/upload-csv")
 async def uploadcsv(
@@ -43,18 +48,19 @@ async def uploadcsv(
         session.add(job)
         session.commit()
 
-        aggregation_service = AggregationService(
-            db=session,
-            job=job,
-            db_dumping_service=DBDumpingService(session),
-            user_csv_io=users.file,
-            transaction_csv_io=transactions.file,
-        )
-        await aggregation_service.start()
-
+        queue.enqueue(aggregate_daily_metrics, job.id, retry=Retry(max=3, interval=[10, 30, 60]))
     return {
         "message": "success",
         "data": {
             "job_id": str(job.id),
         },
     }
+
+@app.websocket("/jobs/{job_id}")
+async def websocket_endpoint(websocket: WebSocket, job_id: str):
+    await websocket.accept()
+    while True:
+        data = await websocket.receive_text()
+
+        await websocket.send_text(f"Message text was: {data}")
+
