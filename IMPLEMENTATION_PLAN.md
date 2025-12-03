@@ -1,5 +1,9 @@
 # Implementation Plan
 
+# Postgres Setup
+# Redis Setup
+# RQ Setup
+
 ## APIs
 
 ### Upload
