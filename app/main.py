@@ -21,7 +21,6 @@ async def uploadcsv(
     users: UploadFile = File(...),
 ):
     # Dump both files to disk in a single call
-    # transactions_path, users_path = await dump_csv(transactions, users)
     queue.enqueue(dump_csv, transactions, users, retry=Retry(max=3, interval=[10, 30, 60]))
 
     return {
