@@ -1,6 +1,7 @@
 import datetime as dt
 import uuid
-from sqlalchemy import UUID, Column, Integer, String, Boolean, DateTime
+from sqlalchemy import UUID, Column, String, Boolean, DateTime
+from sqlalchemy.orm import relationship
 from app.db.base import Base
 
 class User(Base):
@@ -14,3 +15,4 @@ class User(Base):
     company_name = Column(String)
     signup_date = Column(DateTime, default=dt.datetime.utcnow)
 
+    transactions = relationship("Transaction", back_populates="user")
