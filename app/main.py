@@ -6,6 +6,7 @@ from app.rq.rq import queue
 from loguru import logger
 from rq import Retry
 from rq_dashboard_fast import RedisQueueDashboard
+from app.service.csv_service import dump_csv
 dashboard = RedisQueueDashboard(settings.redis_url, "/rq")
 
 app = FastAPI(
@@ -19,16 +20,13 @@ async def uploadcsv(
     transactions: UploadFile = File(...),
     users: UploadFile = File(...),
 ):
-    content1 = (await transactions.read()).decode("utf-8")
-    content2 = (await users.read()).decode("utf-8")
-
-    print("=== FILE 1 CONTENT ===")
-    print(content1)
-    print("=== FILE 2 CONTENT ===")
-    print(content2)
+    # Dump both files to disk in a single call
+    transactions_path, users_path = await dump_csv(transactions, users)
 
     return {
-        "message": "Files received and printed",
+        "message": "Files received and dumped to disk",
         "transactions_name": transactions.filename,
         "users_name": users.filename,
+        "transactions_path": transactions_path,
+        "users_path": users_path,
     }
