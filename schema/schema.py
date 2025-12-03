@@ -4,7 +4,7 @@ from typing import Optional
 from pydantic import BaseModel
 
 
-class User(BaseModel):
+class CSVUser(BaseModel):
     User_ID: int
     User_Name: str
     Region: str
@@ -14,7 +14,7 @@ class User(BaseModel):
     Signup_Date: datetime
 
 
-class Transaction(BaseModel):
+class CSVTransaction(BaseModel):
     RowId: int
     User_ID: int
     Model_Name: str
