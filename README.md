@@ -12,6 +12,9 @@ This is the backend for the business intelligence application.
 
 ## Architecture
 
+<img width="1222" height="632" alt="Screenshot 2025-12-02 at 10 40 38 PM" src="https://github.com/user-attachments/assets/81f74c65-2bd1-4005-a575-2ba76488b0bc" />
+
+```
 ┌─────────────┐
 │   FRONTEND  │
 │             │
@@ -52,6 +55,7 @@ This is the backend for the business intelligence application.
 │ 3. Aggregate│───────┘ Upsert
 │    Metrics  │
 └─────────────┘
+```
 
 Flow:
 Upload → Job Created → Queue Tasks → Worker Processes → DB Updated → WebSocket Notifies → Dashboard Refreshes
