@@ -17,7 +17,6 @@ app = FastAPI(
 
 app.mount("/rq", dashboard)
 
-
 def count_words_at_url(url):
     """Just an example function that's called async."""
     logger.info("Counting words at")
