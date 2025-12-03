@@ -105,10 +105,10 @@ The database is implemented in PostgreSQL using SQLAlchemy models in `app/db/mod
 
    ┌───────────────────────┐   ┌───────────────────────────┐   ┌───────────────────────────┐
    │   daily_metrics       │   │   daily_company_metrics   │   │   daily_model_metrics     │
-   │    (DailyMetric)     │   │ (DailyCompanyMetric)      │   │  (DailyModelMetric)       │
+   │    (DailyMetric)      │   │ (DailyCompanyMetric)      │   │  (DailyModelMetric)       │
    ├───────────────────────┤   ├───────────────────────────┤   ├───────────────────────────┤
    │ date, region (PK)     │   │ date, company_name (PK)   │   │ date, region, model (PK)  │
-   │ KPIs (avg_spend, ...)│   │ total_cost, conv_count    │   │ total_cost, conv_count    │
+   │ KPIs (avg_spend, ...) │   │ total_cost, conv_count    │   │ total_cost, conv_count    │
    └───────────────────────┘   └───────────────────────────┘   └───────────────────────────┘
 
 ```
