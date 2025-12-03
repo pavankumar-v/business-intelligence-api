@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File
 from app.config.settings import settings
 from app.db.models import User
 import uuid
@@ -14,14 +14,21 @@ app = FastAPI(
 
 app.mount("/rq", dashboard)
 
+@app.post("/upload-csv")
+async def uploadcsv(
+    transactions: UploadFile = File(...),
+    users: UploadFile = File(...),
+):
+    content1 = (await transactions.read()).decode("utf-8")
+    content2 = (await users.read()).decode("utf-8")
 
+    print("=== FILE 1 CONTENT ===")
+    print(content1)
+    print("=== FILE 2 CONTENT ===")
+    print(content2)
 
-@app.get("/")
-async def read_root():
-    logger.info(f"request / endpoint!")
-    job = queue.enqueue(count_words_at_url, 'https://stamps.id', retry=Retry(max=3, interval=[10, 30, 60]))
-    # create_user()
-    logger.info(f"Enqueued job: {job}")
-    with get_session() as session:
-        users = session.query(User).all()
-        return {"users": users}
+    return {
+        "message": "Files received and printed",
+        "transactions_name": transactions.filename,
+        "users_name": users.filename,
+    }
