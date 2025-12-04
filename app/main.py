@@ -2,8 +2,8 @@ from time import sleep
 from typing import Dict, List
 from fastapi import FastAPI, UploadFile, File, WebSocket
 from app.config.settings import settings
-from app.db.models import User
-from app.db.models.job import Job
+from app.models import User
+from app.models.job import Job
 from app.db.db import get_session
 import uuid
 from datetime import datetime
