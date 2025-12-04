@@ -8,14 +8,17 @@ from app.db.db import SessionLocal
 import csv
 from sqlalchemy import Table
 
+from app.db.models.transaction import Transaction
 from app.db.models.user import User
 
 class DBDumpingService():
     TRANSACTION_CHUNK_SIZE = 1000
     USER_CHUNK_SIZE = 1000
     
-    def __init__(self, db: Session) -> None:
+    def __init__(self, db: Session, user_csv: BytesIO, transaction_csv: BytesIO) -> None:
         self.db = db
+        self.user_csv = user_csv
+        self.transaction_csv = transaction_csv
 
     def bulk_upsert(self, table: Table, rows: list[dict], conflict_cols: list[str], update_cols: list[str]):
         stmt = insert(table).values(rows)
@@ -36,13 +39,27 @@ class DBDumpingService():
             "company_name": row["Company_Name"],
             "signup_date": row["Signup_Date"]
         }
+    
+    def map_transaction_csv_rows(self, row) -> Transaction.__dict__:
+        """Map a pandas row/Series to a CSVTransaction schema instance."""
+        return {
+            "id": row["RowId"],
+            "user_id": row["User_ID"],
+            "model_name": row["Model_Name"],
+            "conversation_id": row["Conversation_ID"],
+            "token_type": row["Token_Type"],
+            "token_count": row["Token_Count"],
+            "rate_per_1k": row["Rate_Per_1k"],
+            "calculated_cost": row["Calculated_Cost"],
+            "timestamp": row["Timestamp"]
+        }
 
-    async def dump_users(self, user_csv: BytesIO) -> None:
+    def dump_users(self) -> None:
         """Bulk upsert users from a CSV file in chunks using ON CONFLICT.
 
         Key: username (unique).
         """
-        user_chunks: TextFileReader = pd.read_csv(user_csv, chunksize=self.USER_CHUNK_SIZE)
+        user_chunks: TextFileReader = pd.read_csv(self.user_csv, chunksize=self.USER_CHUNK_SIZE)
         for chunk in user_chunks:
             records: list[dict] = []
 
@@ -68,6 +85,34 @@ class DBDumpingService():
             )
             self.db.commit()
 
-    def dump_transactions_in_chunks(self, transaction_csv: BytesIO) -> None:
-        # TODO: Implement this
-        pass
+
+
+    def dump_transactions_in_chunks(self) -> None:
+        transaction_chunks: TextFileReader = pd.read_csv(self.transaction_csv, chunksize=self.TRANSACTION_CHUNK_SIZE)
+        for chunk in transaction_chunks:
+            records: list[dict] = []
+
+            # Build one record dict per row in this chunk
+            for _, row in chunk.iterrows():
+                record = self.map_transaction_csv_rows(row)
+                records.append(record)
+
+            if not records:
+                continue
+
+            self.bulk_upsert(
+                table=Transaction,
+                rows=records,
+                conflict_cols=["id"],
+                update_cols=[
+                    "user_id",
+                    "model_name",
+                    "conversation_id",
+                    "token_type",
+                    "token_count",
+                    "rate_per_1k",
+                    "calculated_cost",
+                    "timestamp",
+                ],
+            )
+            self.db.commit()
