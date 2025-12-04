@@ -1,5 +1,6 @@
 import datetime
 from io import BytesIO
+from typing import Set, Tuple
 from loguru import logger
 import pandas as pd
 from pandas.io.parsers import TextFileReader
@@ -53,6 +54,7 @@ class DBDumpingService():
             "rate_per_1k": row["Rate_Per_1k"],
             "calculated_cost": row["Calculated_Cost"],
             "timestamp": row["Timestamp"],
+            "region": self.db.query(User.region).filter(User.id == row["User_ID"]).first().region,
             "date": datetime.datetime.strptime(row["Timestamp"], "%Y-%m-%dT%H:%M:%SZ").date()
         }
 
@@ -87,9 +89,8 @@ class DBDumpingService():
             )
             self.db.commit()
 
-
-
-    def dump_transactions_in_chunks(self) -> None:
+    def dump_transactions_in_chunks(self) -> Set[Tuple[datetime.date, str]]:
+        affected_date_regions: Set[Tuple[datetime.date, str]] = set()
         transaction_chunks: TextFileReader = pd.read_csv(self.transaction_csv, chunksize=self.TRANSACTION_CHUNK_SIZE)
         for chunk in transaction_chunks:
             records: list[dict] = []
@@ -98,6 +99,7 @@ class DBDumpingService():
             for _, row in chunk.iterrows():
                 record = self.map_transaction_csv_rows(row)
                 records.append(record)
+                affected_date_regions.add((record["date"], record["region"]))
 
             if not records:
                 continue
@@ -115,6 +117,10 @@ class DBDumpingService():
                     "rate_per_1k",
                     "calculated_cost",
                     "timestamp",
+                    "region"
                 ],
             )
+
             self.db.commit()
+
+            return affected_date_regions

@@ -24,16 +24,11 @@ async def aggregate_daily_metrics(job_id: uuid.UUID) -> None:
         )
         
         db_dumping_service.dump_users()
-        db_dumping_service.dump_transactions_in_chunks()
+        affected_date_regions = db_dumping_service.dump_transactions_in_chunks()
 
-    # with await self.db_dumping_service.dump_transactions_in_chunks(self.transaction_csv_io) as transactions:
-    #     self.aggregate_daily_metrics(transactions)
-    #     self.aggregate_daily_model_metrics(transactions)
-    #     self.aggregate_daily_company_metrics(transactions)
+        for idx, (date_val, region) in enumerate(sorted(affected_date_regions), 1):
+            logger.info("Processing {}/{}: Date: {} Region: {}", idx, len(affected_date_regions), date_val, region)
 
-    #     self.job.rows_processed += len(transactions)
-    #     self.db.add(self.job)
-    #     self.db.commit()
     
     # self.job.processed_at = datetime.now()
     # self.db.add(self.job)
