@@ -8,6 +8,7 @@ class Transaction(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    region = Column(String, nullable=False)
     model_name = Column(String, index=True)
     conversation_id = Column(UUID(as_uuid=True), index=True, nullable=False)
     token_type = Column(String, nullable=False)
