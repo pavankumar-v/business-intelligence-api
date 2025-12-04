@@ -1,3 +1,4 @@
+import datetime
 from io import BytesIO
 from loguru import logger
 import pandas as pd
@@ -51,7 +52,8 @@ class DBDumpingService():
             "token_count": row["Token_Count"],
             "rate_per_1k": row["Rate_Per_1k"],
             "calculated_cost": row["Calculated_Cost"],
-            "timestamp": row["Timestamp"]
+            "timestamp": row["Timestamp"],
+            "date": datetime.datetime.strptime(row["Timestamp"], "%Y-%m-%dT%H:%M:%SZ").date()
         }
 
     def dump_users(self) -> None:
