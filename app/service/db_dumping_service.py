@@ -90,16 +90,19 @@ class DBDumpingService():
             self.db.commit()
 
     def dump_transactions_in_chunks(self) -> Set[Tuple[datetime.date, str]]:
-        affected_date_regions: Set[Tuple[datetime.date, str]] = set()
+        affected_date_regions: Set[Tuple[datetime.date, str, int]] = set()
         transaction_chunks: TextFileReader = pd.read_csv(self.transaction_csv, chunksize=self.TRANSACTION_CHUNK_SIZE)
         for chunk in transaction_chunks:
             records: list[dict] = []
 
             # Build one record dict per row in this chunk
+            total_rows = 0
             for _, row in chunk.iterrows():
+
                 record = self.map_transaction_csv_rows(row)
                 records.append(record)
-                affected_date_regions.add((record["date"], record["region"]))
+                affected_date_regions.add((record["date"], record["region"], total_rows))
+                total_rows += 1
 
             if not records:
                 continue
