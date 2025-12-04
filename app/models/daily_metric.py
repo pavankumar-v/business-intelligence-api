@@ -16,6 +16,8 @@ class DailyMetric(Base):
     costliest_model = Column(String, nullable=False)
     least_used_model = Column(String, nullable=False)
     avg_token_consumption = Column(Float, nullable=False)
+    total_prompt_tokens = Column(Integer, nullable=False, default=0)
+    total_completion_tokens = Column(Integer, nullable=False, default=0)
     model_efficiency_ratio = Column(Float, nullable=False)
     active_subscriber_utilization_rate = Column(Float, nullable=False)
     

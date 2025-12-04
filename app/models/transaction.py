@@ -1,6 +1,6 @@
 from sqlalchemy.orm import relationship
 from app.db.base import Base
-from sqlalchemy import UUID, Column, String, Float, DateTime, Integer, ForeignKey
+from sqlalchemy import UUID, Column, String, Float, DateTime, Integer, ForeignKey, Date
 import uuid
 
 class Transaction(Base):
@@ -14,6 +14,7 @@ class Transaction(Base):
     token_count = Column(Integer, nullable=False)
     rate_per_1k = Column(Float, nullable=False)
     calculated_cost = Column(Float, nullable=False)
+    date = Column(Date, nullable=False)
     timestamp = Column(DateTime, nullable=False)
 
     user = relationship("User", back_populates="transactions")
