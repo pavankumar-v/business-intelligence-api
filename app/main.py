@@ -1,21 +1,18 @@
-from time import sleep
 from typing import Dict, List
-from fastapi import FastAPI, UploadFile, File, WebSocket
+from fastapi import FastAPI, Query, UploadFile, File, WebSocket
 from app.config.settings import settings
-from app.models import User
 from app.models.job import Job
 from app.db.db import get_session
 import uuid
-from datetime import datetime
+from datetime import date
 import pandas as pd
 from app.etl.daily_metrics_etl import aggregate_daily_metrics
 from app.rq.rq import queue
 from loguru import logger
 from rq import Retry
 from rq_dashboard_fast import RedisQueueDashboard
-from app.service.aggregation_service import AggregationService
 from app.service.csv_service import dump_csv, FILE_UPLOAD_DIR
-from app.service.db_dumping_service import DBDumpingService
+from app.models.daily_metric import DailyMetric
 dashboard = RedisQueueDashboard(settings.redis_url, "/rq")
 
 app = FastAPI(
@@ -65,3 +62,20 @@ async def websocket_endpoint(websocket: WebSocket, job_id: str):
 
         await websocket.send_text(f"Message text was: {data}")
 
+@app.get("/metrics")
+async def get_metrics(regions: List[str] = Query(...), start_date: date = Query(...), end_date: date = Query(...)):
+    logger.info("Received metrics request")
+    logger.info(regions, start_date, end_date)
+    with get_session() as session:
+        metrics = session.query(
+            DailyMetric
+        ).filter(
+            DailyMetric.region.in_(regions)
+        ).filter(
+            DailyMetric.date.between(start_date, end_date)
+        ).order_by(DailyMetric.date.desc()).all()
+
+    return {
+        "message": "success",
+        "data": metrics,
+    }
