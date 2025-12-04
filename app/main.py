@@ -48,7 +48,7 @@ async def uploadcsv(
         session.add(job)
         session.commit()
 
-        queue.enqueue(aggregate_daily_metrics, job.id, retry=Retry(max=3, interval=[10, 30, 60]))
+        queue.enqueue(aggregate_daily_metrics, job.id, retry=Retry(max=3, interval=[10, 30, 60]), depends_on=rq_job)
     return {
         "message": "success",
         "data": {
