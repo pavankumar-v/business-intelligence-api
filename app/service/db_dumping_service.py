@@ -9,7 +9,6 @@ import csv
 from sqlalchemy import Table
 
 from app.db.models.user import User
-from schema.schema import CSVUser
 
 class DBDumpingService():
     TRANSACTION_CHUNK_SIZE = 1000
@@ -26,7 +25,7 @@ class DBDumpingService():
         )
         self.db.execute(stmt)
 
-    def map_user_csv_rows(self, row) -> CSVUser:
+    def map_user_csv_rows(self, row) -> User.__dict__:
         """Map a pandas row/Series to a CSVUser schema instance."""
         return {
             "id": row["User_ID"],
