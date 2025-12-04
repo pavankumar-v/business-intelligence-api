@@ -7,6 +7,7 @@ from app.models.job import Job
 from app.db.db import get_session
 import uuid
 from datetime import datetime
+import pandas as pd
 from app.etl.daily_metrics_etl import aggregate_daily_metrics
 from app.rq.rq import queue
 from loguru import logger
@@ -39,7 +40,7 @@ async def uploadcsv(
             id=uuid.uuid4(),
             file_location=str(FILE_UPLOAD_DIR),
             filename=f"{transactions.filename},{users.filename}",
-            total_rows=0,
+            total_rows=pd.read_csv(transactions.file).shape[0],
             processed_rows=0,
             error=None,
             processed_at=None,
