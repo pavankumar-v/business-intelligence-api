@@ -1,5 +1,6 @@
 from datetime import date
 from select import select
+from time import sleep
 import uuid
 from typing import Set, Tuple
 from loguru import logger
@@ -36,9 +37,11 @@ async def aggregate_daily_metrics(job_id: uuid.UUID) -> None:
         db_dumping_service.dump_users()
         affected_date_regions = db_dumping_service.dump_transactions_in_chunks()
 
-        for idx, (date_val, region, total_rows) in enumerate(sorted(affected_date_regions), 1):
-            logger.info("Processing {}/{}: Date: {} Region: {} Total Rows: {}", idx, len(affected_date_regions), date_val, region, total_rows)
-            aggregate_daily_metrics_from_db(db, date_val, region)
+        for idx, (date_val, region) in enumerate(sorted(affected_date_regions), 1):
+            logger.info("Processing {}/{}: Date: {} Region: {}", idx, len(affected_date_regions), date_val, region)
+            aggregate_daily_metrics_from_db(db, date_val, region, job_id)
+
+        # processed_rows is incremented per chunk inside dump_transactions_in_chunks
 
 
 def calculate_model_metrics_from_db(db: Session, target_date: date, target_region: str) -> dict:
@@ -89,7 +92,7 @@ def calculate_model_metrics_from_db(db: Session, target_date: date, target_regio
     }
 
 
-def aggregate_daily_metrics_from_db(db: Session, target_date: date, target_region: str):
+def aggregate_daily_metrics_from_db(db: Session, target_date: date, target_region: str, job_id: str):
     """
     Calculate metrics by querying ALL transactions from database for this date/region
     This ensures accuracy even if transactions were added across multiple CSV imports
@@ -180,6 +183,8 @@ def aggregate_daily_metrics_from_db(db: Session, target_date: date, target_regio
         db.add(metric)
         print(f"Created new metrics")
     
+    job = db.query(Job).filter(Job.id == job_id).first()
+    job.processed_rows += len(base_stats)
     db.commit()
 
 
