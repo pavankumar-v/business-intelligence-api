@@ -2,7 +2,7 @@ import uuid
 from app.db.db import get_session
 from app.service import db_dumping_service
 from app.service.db_dumping_service import DBDumpingService
-from app.db.models.job import Job
+from app.models.job import Job
 
 async def aggregate_daily_metrics(job_id: uuid.UUID) -> None:
     """

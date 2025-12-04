@@ -8,8 +8,8 @@ from app.db.db import SessionLocal
 import csv
 from sqlalchemy import Table
 
-from app.db.models.transaction import Transaction
-from app.db.models.user import User
+from app.models.transaction import Transaction
+from app.models.user import User
 
 class DBDumpingService():
     TRANSACTION_CHUNK_SIZE = 1000

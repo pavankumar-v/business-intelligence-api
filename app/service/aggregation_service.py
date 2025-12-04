@@ -4,9 +4,9 @@ import uuid
 
 from sqlalchemy import null
 from sqlalchemy.orm import Session
-from app.db.models.job import Job
+from app.models.job import Job
 from app.service.db_dumping_service import DBDumpingService
-from app.db.models.transaction import Transaction
+from app.models.transaction import Transaction
 
 class AggregationService():
     def __init__(
