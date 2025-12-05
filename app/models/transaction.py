@@ -15,6 +15,7 @@ class Transaction(Base):
     token_count = Column(Integer, nullable=False)
     rate_per_1k = Column(Float, nullable=False)
     calculated_cost = Column(Float, nullable=False)
+    company = Column(String, nullable=False)
     date = Column(Date, nullable=False)
     timestamp = Column(DateTime, nullable=False)
 

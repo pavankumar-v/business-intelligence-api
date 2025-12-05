@@ -44,6 +44,7 @@ class DBDumpingService():
     
     def map_transaction_csv_rows(self, row) -> Transaction.__dict__:
         """Map a pandas row/Series to a CSVTransaction schema instance."""
+        user = self.db.query(User).filter(User.id == row["User_ID"]).first()
         return {
             "id": row["RowId"],
             "user_id": row["User_ID"],
@@ -54,7 +55,8 @@ class DBDumpingService():
             "rate_per_1k": row["Rate_Per_1k"],
             "calculated_cost": row["Calculated_Cost"],
             "timestamp": row["Timestamp"],
-            "region": self.db.query(User.region).filter(User.id == row["User_ID"]).first().region,
+            "region": user.region,
+            "company": user.company_name,
             "date": datetime.datetime.strptime(row["Timestamp"], "%Y-%m-%dT%H:%M:%SZ").date()
         }
 
