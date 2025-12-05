@@ -1,4 +1,6 @@
-from typing import Dict, List
+from starlette.middleware.cors import CORSMiddleware
+from app.service.metrics_service import get_metrics_service
+from typing import Dict, List, Optional
 from fastapi import FastAPI, Query, UploadFile, File, WebSocket
 from app.config.settings import settings
 from app.models.job import Job
@@ -17,6 +19,15 @@ dashboard = RedisQueueDashboard(settings.redis_url, "/rq")
 
 app = FastAPI(
     logger=logger
+)
+
+allowed_origins = ["http://localhost:5173"]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.mount("/rq", dashboard)
@@ -62,20 +73,20 @@ async def websocket_endpoint(websocket: WebSocket, job_id: str):
 
         await websocket.send_text(f"Message text was: {data}")
 
-@app.get("/metrics")
-async def get_metrics(regions: List[str] = Query(...), start_date: date = Query(...), end_date: date = Query(...)):
+@app.get("/metrics/kpis")
+async def get_metrics(regions: Optional[List[str]] = Query(None), start_date: date = Query(...), end_date: date = Query(...)):
     logger.info("Received metrics request")
-    logger.info(regions, start_date, end_date)
-    with get_session() as session:
-        metrics = session.query(
-            DailyMetric
-        ).filter(
-            DailyMetric.region.in_(regions)
-        ).filter(
-            DailyMetric.date.between(start_date, end_date)
-        ).order_by(DailyMetric.date.desc()).all()
-
-    return {
-        "message": "success",
-        "data": metrics,
+    logger.info(f"Regions: {regions}, Start: {start_date}, End: {end_date}")
+    try:
+        metrics_service = get_metrics_service()
+        metrics = metrics_service.get_metrics(start_date, end_date, regions)
+        return {
+            "message": "success",
+            "data": metrics,
     }
+    except Exception as e:
+        logger.error(e)
+        return {
+            "message": "error",
+            "data": str(e),
+        }
