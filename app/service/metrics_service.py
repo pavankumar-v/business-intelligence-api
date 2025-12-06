@@ -39,7 +39,9 @@ class MetricsService:
                 "least_used_model": None,
                 "avg_token_consumption_per_day": 0.0,
                 "model_efficiency": 0.0,
-                "active_subscriber_utilization_rate": 0.0
+                "active_subscriber_utilization_rate": 0.0,
+                "total_cost": 0.0,
+                "spends_trend": [],
             }
         
         # Aggregate metrics
@@ -76,6 +78,41 @@ class MetricsService:
         # Calculate average active subscriber utilization rate
         avg_utilization_rate = sum(metric.active_subscriber_utilization_rate for metric in daily_metrics) / len(daily_metrics)
         
+        # Calculate total cost across all metrics
+        total_cost = sum(metric.total_cost for metric in daily_metrics)
+        
+        # Build spends_trend and token_consumption_trend
+        # Group by date and sum costs/tokens across all regions
+        date_aggregates = {}
+        for metric in daily_metrics:
+            date_key = metric.date
+            if date_key not in date_aggregates:
+                date_aggregates[date_key] = {
+                    'cost': 0.0,
+                    'token_consumption': 0
+                }
+            date_aggregates[date_key]['cost'] += metric.total_cost
+            date_aggregates[date_key]['token_consumption'] += metric.avg_token_consumption
+        
+        # Convert to sorted list format
+        spends_trend = [
+            {
+                'date': date_key.isoformat(),
+                'cost': round(values['cost'], 2),
+                'token_consumption': int(values['token_consumption'])
+            }
+            for date_key, values in sorted(date_aggregates.items())
+        ]
+        
+        token_consumption_trend = [
+            {
+                'date': date_key.isoformat(),
+                'cost': round(values['cost'], 2),
+                'token_consumption': int(values['token_consumption'])
+            }
+            for date_key, values in sorted(date_aggregates.items())
+        ]
+        
         return {
             "highest_model_used": highest_model_used,
             "avg_spending_per_day": round(avg_spending_per_day, 2),
@@ -83,7 +120,10 @@ class MetricsService:
             "least_used_model": least_used_model,
             "avg_token_consumption_per_day": round(avg_token_consumption_per_day, 2),
             "model_efficiency": round(avg_model_efficiency, 4),
-            "active_subscriber_utilization_rate": round(avg_utilization_rate, 4)
+            "active_subscriber_utilization_rate": round(avg_utilization_rate, 4),
+            "total_cost": round(total_cost, 2),
+            "spends_trend": spends_trend,
+            # "token_consumption_trend": token_consumption_trend
         }
 
 
