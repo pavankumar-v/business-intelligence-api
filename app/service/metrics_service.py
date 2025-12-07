@@ -73,9 +73,6 @@ class MetricsService:
         avg_spending_per_day = total_spending / num_days if num_days > 0 else 0.0
         avg_token_consumption_per_day = total_token_consumption / num_days if num_days > 0 else 0.0
         
-        # Calculate average model efficiency
-        avg_model_efficiency = sum(metric.model_efficiency_ratio for metric in daily_metrics) / len(daily_metrics)
-        
         # Calculate average active subscriber utilization rate
         avg_utilization_rate = sum(metric.active_subscriber_utilization_rate for metric in daily_metrics) / len(daily_metrics)
         
@@ -137,7 +134,6 @@ class MetricsService:
             "costliest_model": costliest_model,
             "least_used_model": least_used_model,
             "avg_token_consumption_per_day": round(avg_token_consumption_per_day, 2),
-            "model_efficiency": round(avg_model_efficiency, 4),
             "active_subscriber_utilization_rate": round(avg_utilization_rate, 4),
             "total_cost": round(total_cost, 2),
             "spends_trend": spends_trend,
