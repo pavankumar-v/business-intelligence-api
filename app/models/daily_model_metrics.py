@@ -1,8 +1,5 @@
-from sqlalchemy.orm import relationship
 from app.db.base import Base
-from sqlalchemy import UUID, Column, String, Float, DateTime, Integer, Date # Added Date
-import sqlalchemy as sa # Added sa import
-import uuid
+from sqlalchemy import Column, String, Float, Date, Integer
 
 class DailyModelMetric(Base):
     __tablename__ = "daily_model_metrics"
@@ -13,3 +10,4 @@ class DailyModelMetric(Base):
     model_name = Column(String, primary_key=True)
     total_cost = Column(Float, nullable=False)
     conversation_count = Column(Integer, nullable=False)
+    token_consumption = Column(Integer, nullable=False)
