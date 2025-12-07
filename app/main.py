@@ -66,14 +66,6 @@ async def uploadcsv(
         },
     }
 
-@app.websocket("/jobs/{job_id}")
-async def websocket_endpoint(websocket: WebSocket, job_id: str):
-    await websocket.accept()
-    while True:
-        data = await websocket.receive_text()
-
-        await websocket.send_text(f"Message text was: {data}")
-
 @app.get("/metrics/kpis")
 async def get_metrics(regions: Optional[List[str]] = Query(None), start_date: date = Query(...), end_date: date = Query(...)):
     logger.info("Received metrics request")

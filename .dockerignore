@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Environment files (will be mounted separately)
+.env
+.env.local
+.env.docker
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Project specific
+uploads/
+*.log
+.llm/
+
+# Documentation
+*.md
+!README.md
+
+# Alembic (migrations should be in image)
+# Keep alembic folder
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore
