@@ -40,8 +40,121 @@ async def aggregate_daily_metrics(job_id: uuid.UUID) -> None:
         for idx, (date_val, region) in enumerate(sorted(affected_date_regions), 1):
             logger.info("Processing {}/{}: Date: {} Region: {}", idx, len(affected_date_regions), date_val, region)
             aggregate_daily_metrics_from_db(db, date_val, region, job_id)
+            aggregate_daily_model_metrics_from_db(db, date_val, region)
+            aggregate_daily_company_metrics_from_db(db, date_val, region)
 
         # processed_rows is incremented per chunk inside dump_transactions_in_chunks
+
+
+def aggregate_daily_company_metrics_from_db(db: Session, target_date: date, target_region: str):
+    """
+    Aggregate company-specific metrics for a given date and region.
+    Populates the daily_company_metrics table with:
+    - total_cost per company
+    - conversation_count per company
+    """
+    from app.models.daily_company_metrics import DailyCompanyMetric
+    
+    # Query company-level aggregates from database
+    company_stats = (
+        db.query(
+            User.company_name,
+            func.sum(Transaction.calculated_cost).label('total_cost'),
+            func.count(distinct(Transaction.conversation_id)).label('conversation_count'),
+        )
+        .join(User, Transaction.user_id == User.id)
+        .filter(Transaction.date == target_date)
+        .filter(User.region == target_region)
+        .filter(User.company_name.isnot(None))  # Only companies with names
+        .group_by(User.company_name)
+        .all()
+    )
+    
+    if not company_stats:
+        logger.info(f"No company stats found for {target_date}, {target_region}")
+        return
+    
+    # Upsert each company's metrics
+    for company in company_stats:
+        existing = db.query(DailyCompanyMetric).filter(
+            DailyCompanyMetric.date == target_date,
+            DailyCompanyMetric.company_name == company.company_name
+        ).first()
+        
+        if existing:
+            existing.total_cost = float(company.total_cost)
+            existing.conversation_count = int(company.conversation_count)
+            logger.debug(f"Updated company metric: {company.company_name}")
+        else:
+            metric = DailyCompanyMetric(
+                date=target_date,
+                company_name=company.company_name,
+                total_cost=float(company.total_cost),
+                conversation_count=int(company.conversation_count)
+            )
+            db.add(metric)
+            logger.debug(f"Created company metric: {company.company_name}")
+    
+    db.commit()
+    logger.info(f"Aggregated {len(company_stats)} company metrics for {target_date}, {target_region}")
+
+
+def aggregate_daily_model_metrics_from_db(db: Session, target_date: date, target_region: str):
+    """
+    Aggregate model-specific metrics for a given date and region.
+    Populates the daily_model_metrics table with:
+    - total_cost per model
+    - conversation_count per model  
+    - token_consumption per model
+    """
+    from app.models.daily_model_metrics import DailyModelMetric
+    
+    # Query model-level aggregates from database
+    model_stats = (
+        db.query(
+            Transaction.model_name,
+            func.sum(Transaction.calculated_cost).label('total_cost'),
+            func.count(distinct(Transaction.conversation_id)).label('conversation_count'),
+            func.sum(Transaction.token_count).label('token_consumption'),
+        )
+        .join(User, Transaction.user_id == User.id)
+        .filter(Transaction.date == target_date)
+        .filter(User.region == target_region)
+        .group_by(Transaction.model_name)
+        .all()
+    )
+    
+    if not model_stats:
+        logger.info(f"No model stats found for {target_date}, {target_region}")
+        return
+    
+    # Upsert each model's metrics
+    for model in model_stats:
+        existing = db.query(DailyModelMetric).filter(
+            DailyModelMetric.date == target_date,
+            DailyModelMetric.region == target_region,
+            DailyModelMetric.model_name == model.model_name
+        ).first()
+        
+        if existing:
+            existing.total_cost = float(model.total_cost)
+            existing.conversation_count = int(model.conversation_count)
+            existing.token_consumption = int(model.token_consumption or 0)
+            logger.debug(f"Updated model metric: {model.model_name}")
+        else:
+            metric = DailyModelMetric(
+                date=target_date,
+                region=target_region,
+                model_name=model.model_name,
+                total_cost=float(model.total_cost),
+                conversation_count=int(model.conversation_count),
+                token_consumption=int(model.token_consumption or 0)
+            )
+            db.add(metric)
+            logger.debug(f"Created model metric: {model.model_name}")
+    
+    db.commit()
+    logger.info(f"Aggregated {len(model_stats)} model metrics for {target_date}, {target_region}")
 
 
 def calculate_model_metrics_from_db(db: Session, target_date: date, target_region: str) -> dict:
