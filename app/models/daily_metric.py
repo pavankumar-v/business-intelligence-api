@@ -18,9 +18,8 @@ class DailyMetric(Base):
     avg_token_consumption = Column(Integer, nullable=False)
     total_prompt_tokens = Column(Integer, nullable=False, default=0)
     total_completion_tokens = Column(Integer, nullable=False, default=0)
-    model_efficiency_ratio = Column(Float, nullable=False)
     active_subscriber_utilization_rate = Column(Float, nullable=False)
-    
+
     # Supporting data (for validation)
     total_cost = Column(Float, nullable=False)
     total_conversations = Column(Integer, nullable=False)
