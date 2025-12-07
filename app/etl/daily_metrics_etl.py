@@ -42,3 +42,4 @@ async def aggregate_daily_metrics(job_id: uuid.UUID) -> None:
 
         aggregation_service.aggregate_daily_metrics()
         aggregation_service.aggregate_daily_model_metrics()
+        aggregation_service.aggregate_daily_company_metrics()

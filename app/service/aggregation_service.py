@@ -1,3 +1,4 @@
+from app.models.daily_company_metrics import DailyCompanyMetric
 from app.models.daily_model_metrics import DailyModelMetric
 import uuid
 
@@ -287,4 +288,130 @@ class AggregationService():
         self.db.commit()
 
     def aggregate_daily_company_metrics(self):
-        pass
+        # Base CTE (fact table)
+        base = (
+            select(
+                Transaction.date.label("date"),
+                Transaction.region.label("region"),
+                Transaction.company.label("company_name"),
+                Transaction.model_name.label("model_name"),
+                Transaction.calculated_cost.label("calculated_cost"),
+                Transaction.conversation_id.label("conversation_id"),
+            )
+            .cte("base")
+        )
+
+        # Per-company aggregated totals
+        agg = (
+            select(
+                base.c.date,
+                base.c.region,
+                base.c.company_name,
+                func.sum(base.c.calculated_cost).label("total_cost"),
+                func.count(func.distinct(base.c.conversation_id)).label("conversation_count"),
+            )
+            .group_by(base.c.date, base.c.region, base.c.company_name)
+            .cte("agg")
+        )
+
+        # Compute model usage per company/date/region
+        model_counts_base = (
+            select(
+                base.c.date,
+                base.c.region,
+                base.c.company_name,
+                base.c.model_name,
+                func.count(func.distinct(base.c.conversation_id)).label("model_conversations"),
+            )
+            .group_by(
+                base.c.date,
+                base.c.region,
+                base.c.company_name,
+                base.c.model_name,
+            )
+            .cte("model_counts_base")
+        )
+
+        # Ranking models using window functions
+        model_counts = (
+            select(
+                model_counts_base.c.date,
+                model_counts_base.c.region,
+                model_counts_base.c.company_name,
+                model_counts_base.c.model_name,
+                model_counts_base.c.model_conversations,
+                func.row_number()
+                .over(
+                    partition_by=(
+                        model_counts_base.c.date,
+                        model_counts_base.c.region,
+                        model_counts_base.c.company_name,
+                    ),
+                    order_by=model_counts_base.c.model_conversations.desc(),
+                ).label("rn_highest"),
+                func.row_number()
+                .over(
+                    partition_by=(
+                        model_counts_base.c.date,
+                        model_counts_base.c.region,
+                        model_counts_base.c.company_name,
+                    ),
+                    order_by=model_counts_base.c.model_conversations.asc(),
+                ).label("rn_least"),
+            )
+            .cte("model_counts")
+        )
+
+        mc_highest = model_counts.alias("mc_highest")
+        mc_least = model_counts.alias("mc_least")
+
+        # FINAL SELECT
+        stmt = (
+            select(
+                agg.c.date,
+                agg.c.region,
+                agg.c.company_name,
+                mc_highest.c.model_name.label("highest_used_model"),
+                mc_least.c.model_name.label("least_used_model"),
+                agg.c.total_cost,
+                agg.c.conversation_count,
+            )
+            .join(
+                mc_highest,
+                (mc_highest.c.date == agg.c.date)
+                & (mc_highest.c.region == agg.c.region)
+                & (mc_highest.c.company_name == agg.c.company_name)
+                & (mc_highest.c.rn_highest == 1),
+            )
+            .join(
+                mc_least,
+                (mc_least.c.date == agg.c.date)
+                & (mc_least.c.region == agg.c.region)
+                & (mc_least.c.company_name == agg.c.company_name)
+                & (mc_least.c.rn_least == 1),
+            )
+            .order_by(
+                agg.c.date,
+                agg.c.region,
+                agg.c.company_name,
+            )
+        )
+
+        rows = self.db.execute(stmt).all()
+
+        for row in rows:
+            dcm = DailyCompanyMetric(
+                date=row.date,
+                region=row.region,
+                company_name=row.company_name,
+                highest_used_model=row.highest_used_model,
+                least_used_model=row.least_used_model,
+                total_cost=row.total_cost,
+                conversation_count=row.conversation_count,
+            )
+
+            # Composite PK → merge() is perfect for UPSERT
+            self.db.merge(dcm)
+
+        self.db.commit()
+
