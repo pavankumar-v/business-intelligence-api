@@ -86,6 +86,7 @@ async def get_metrics(regions: Optional[List[str]] = Query(None), start_date: da
                 "kpis": metrics,
                 "models_metrics": metrics_service.get_model_cost_summary(regions, start_date, end_date),
                 "region_wise_spends": metrics_service.get_region_wise_metrics(regions, start_date, end_date),
+                "company_wise_spends": metrics_service.get_company_wise_spends(regions, start_date, end_date),
             },
         }
     except Exception as e:

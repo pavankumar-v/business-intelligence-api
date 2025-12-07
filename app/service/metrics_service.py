@@ -1,3 +1,4 @@
+from app.models.daily_company_metrics import DailyCompanyMetric
 from app.models.daily_model_metrics import DailyModelMetric
 from app.db.db import get_session
 from sqlalchemy.orm import Session
@@ -173,6 +174,39 @@ class MetricsService:
             }
             for row in rows
         ]
+    
+    def get_company_wise_spends(self, regions: list[str] | None = None, start_date=None, end_date=None):
+        conditions = []
+
+        if regions:
+            conditions.append(DailyCompanyMetric.region.in_(regions))
+
+        if start_date:
+            conditions.append(DailyCompanyMetric.date >= start_date)
+
+        if end_date:
+            conditions.append(DailyCompanyMetric.date <= end_date)
+
+        stmt = (
+            select(
+                DailyCompanyMetric.company_name.label("company"),
+                func.sum(DailyCompanyMetric.total_cost).label("total_spends"),
+            )
+            .where(*conditions)
+            .group_by(DailyCompanyMetric.company_name)
+            .order_by(func.sum(DailyCompanyMetric.total_cost).desc())
+        )
+
+        rows = self.db.execute(stmt).all()
+
+        return [
+            {
+                "company": row.company,
+                "total_spends": round(row.total_spends, 2),
+            }
+            for row in rows
+        ]
+
 
 
         
