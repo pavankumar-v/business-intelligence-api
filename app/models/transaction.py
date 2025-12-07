@@ -1,6 +1,6 @@
 from sqlalchemy.orm import relationship
 from app.db.base import Base
-from sqlalchemy import UUID, Column, String, Float, DateTime, Integer, ForeignKey
+from sqlalchemy import UUID, Column, String, Float, DateTime, Integer, ForeignKey, Date
 import uuid
 
 class Transaction(Base):
@@ -8,12 +8,15 @@ class Transaction(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    region = Column(String, nullable=False)
     model_name = Column(String, index=True)
     conversation_id = Column(UUID(as_uuid=True), index=True, nullable=False)
     token_type = Column(String, nullable=False)
     token_count = Column(Integer, nullable=False)
     rate_per_1k = Column(Float, nullable=False)
     calculated_cost = Column(Float, nullable=False)
+    company = Column(String, nullable=False)
+    date = Column(Date, nullable=False)
     timestamp = Column(DateTime, nullable=False)
 
     user = relationship("User", back_populates="transactions")

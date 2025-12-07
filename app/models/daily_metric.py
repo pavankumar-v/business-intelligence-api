@@ -15,14 +15,15 @@ class DailyMetric(Base):
     avg_spending = Column(Float, nullable=False)
     costliest_model = Column(String, nullable=False)
     least_used_model = Column(String, nullable=False)
-    avg_token_consumption = Column(Float, nullable=False)
-    model_efficiency_ratio = Column(Float, nullable=False)
+    avg_token_consumption = Column(Integer, nullable=False)
+    total_prompt_tokens = Column(Integer, nullable=False, default=0)
+    total_completion_tokens = Column(Integer, nullable=False, default=0)
     active_subscriber_utilization_rate = Column(Float, nullable=False)
-    
+
     # Supporting data (for validation)
     total_cost = Column(Float, nullable=False)
     total_conversations = Column(Integer, nullable=False)
-    
+
     # Metadata
     created_at = Column(DateTime, default=sa.func.now())
     updated_at = Column(DateTime, default=sa.func.now(), onupdate=sa.func.now())
