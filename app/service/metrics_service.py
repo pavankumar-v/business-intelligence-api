@@ -42,6 +42,7 @@ class MetricsService:
                 "active_subscriber_utilization_rate": 0.0,
                 "total_cost": 0.0,
                 "spends_trend": [],
+                "region_wise_spends": [],
             }
         
         # Aggregate metrics
@@ -113,6 +114,23 @@ class MetricsService:
             for date_key, values in sorted(date_aggregates.items())
         ]
         
+        # Build region_wise_spends
+        # Group by region and sum costs
+        region_aggregates = {}
+        for metric in daily_metrics:
+            region = metric.region
+            if region not in region_aggregates:
+                region_aggregates[region] = 0.0
+            region_aggregates[region] += metric.total_cost
+        
+        region_wise_spends = [
+            {
+                'region': region,
+                'spends': round(total_spend, 2)
+            }
+            for region, total_spend in sorted(region_aggregates.items(), key=lambda x: x[1], reverse=True)
+        ]
+        
         return {
             "highest_model_used": highest_model_used,
             "avg_spending_per_day": round(avg_spending_per_day, 2),
@@ -123,9 +141,9 @@ class MetricsService:
             "active_subscriber_utilization_rate": round(avg_utilization_rate, 4),
             "total_cost": round(total_cost, 2),
             "spends_trend": spends_trend,
+            "region_wise_spends": region_wise_spends,
             # "token_consumption_trend": token_consumption_trend
         }
-
 
 def get_metrics_service() -> MetricsService:
     with get_session() as db:
