@@ -1,3 +1,4 @@
+from anyio._core._eventloop import sleep
 from starlette.middleware.cors import CORSMiddleware
 from app.service.metrics_service import get_metrics_service
 from typing import Dict, List, Optional
@@ -87,6 +88,7 @@ async def get_metrics(regions: Optional[List[str]] = Query(None), start_date: da
                 "models_metrics": metrics_service.get_model_cost_summary(regions, start_date, end_date),
                 "region_wise_spends": metrics_service.get_region_wise_metrics(regions, start_date, end_date),
                 "company_wise_spends": metrics_service.get_company_wise_spends(regions, start_date, end_date),
+                "max_date_range": metrics_service.max_date_range(),
             },
         }
     except Exception as e:

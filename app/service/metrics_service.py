@@ -207,6 +207,19 @@ class MetricsService:
             for row in rows
         ]
 
+    def max_date_range(self):
+        # min_date, max_date
+        stmt = (
+            select(
+                func.min(DailyMetric.date).label("min_date"),
+                func.max(DailyMetric.date).label("max_date"),
+            )
+        )
+
+        rows = self.db.execute(stmt).all()
+
+        return rows[0].min_date, rows[0].max_date
+
 
 
         
