@@ -142,6 +142,39 @@ class MetricsService:
             for row in rows
         ]
 
+    def get_region_wise_metrics(self, regions: list[str] | None = None, start_date=None, end_date=None):
+        conditions = []
+
+        if regions:
+            conditions.append(DailyMetric.region.in_(regions))
+
+        if start_date:
+            conditions.append(DailyMetric.date >= start_date)
+
+        if end_date:
+            conditions.append(DailyMetric.date <= end_date)
+
+        stmt = (
+            select(
+                DailyMetric.region.label("region"),
+                func.sum(DailyMetric.total_cost).label("total_spends"),
+            )
+            .where(*conditions)
+            .group_by(DailyMetric.region)
+            .order_by(func.sum(DailyMetric.total_cost).desc())
+        )
+
+        rows = self.db.execute(stmt).all()
+
+        return [
+            {
+                "region": row.region,
+                "total_spends": round(row.total_spends, 2),
+            }
+            for row in rows
+        ]
+
+
         
 def get_metrics_service() -> MetricsService:
     with get_session() as db:
