@@ -72,11 +72,11 @@ total_conversations
 
 # Steps to calculate company metrics:
 
-1. Group Transactions By Company Name
+1. Group Transactions By Company Name, date, region
 
 ```
    output - {
-    "ABC Compnay": [
+    "(2024-01-02,EU, Tech Global)": [
             {
                 "conversation_id": "123",
                 "model_name": "gpt-4o",
@@ -90,7 +90,7 @@ total_conversations
                 "token_count": 100
             }
         ],
-        "ABC2 Compnay": [
+        "(2024-01-02,EU, Tech Global)": [
             {
                 "conversation_id": "123",
                 "model_name": "gpt-4o",
@@ -107,14 +107,22 @@ total_conversations
    Final Result
    [
         {
-            "company_name": "ABC Company",
+            "company_name": "Tech Global",
+            "date": "2024-01-02",
+            "region": "EU",
             "total_cost": 200,
-            "conversation_count": 100,
+            "total_conversations": 100,
+            "heighest_used_model": "gpt-4o",
+            "least_used_model": "gpt-3.5-low"
         },
         {
-            "company_name": "ABC2 Company",
-            "total_cost": 100,
-            "conversation_count": 50
+            "company_name": "Tech Global2",
+            "date": "2024-01-02",
+            "region": "EU",
+            "total_cost": 200,
+            "total_conversations": 100,
+            "heighest_used_model": "gpt-4o",
+            "least_used_model": "gpt-3.5-low"
         }
    ]
 ```
