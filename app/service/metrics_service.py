@@ -4,142 +4,111 @@ from sqlalchemy import func
 from datetime import date
 from typing import Optional
 from app.models.daily_metric import DailyMetric
+from sqlalchemy import select, func
+from sqlalchemy.orm import Session
+from app.models.daily_metric import DailyMetric  # adjust import
 
 class MetricsService:
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    # Metrics to return
-    # top_model_user 
-    # highest_model_used
-    # avg_spending_per_day
-    # costliest_model
-    # least_used_model
-    # avg_token_consumption_per_day
-    # model_efficiency
-    # active_subscriber_utilization_rate
-    def get_metrics(self, start_date: date, end_date: date, regions: Optional[list[str]] = None) -> dict:
-        # Build base query with filters
-        query = self.db.query(DailyMetric).filter(
-            DailyMetric.date.between(start_date, end_date)
-        )
-        
-        # Apply region filter if provided
+    def get_daily_metrics_summary(self,regions: list[str] | None, start_date, end_date):
+        # 1) Build common filter conditions
+        conditions = []
         if regions:
-            query = query.filter(DailyMetric.region.in_(regions))
-        
-        # Get all matching records
-        daily_metrics = query.all()
-        
-        if not daily_metrics:
-            return {
-                "highest_model_used": None,
-                "avg_spending_per_day": 0.0,
-                "costliest_model": None,
-                "least_used_model": None,
-                "avg_token_consumption_per_day": 0.0,
-                "model_efficiency": 0.0,
-                "active_subscriber_utilization_rate": 0.0,
-                "total_cost": 0.0,
-                "spends_trend": [],
-                "region_wise_spends": [],
-            }
-        
-        # Aggregate metrics
-        total_spending = sum(metric.avg_spending for metric in daily_metrics)
-        total_token_consumption = sum(metric.avg_token_consumption for metric in daily_metrics)
-        num_days = len(set(metric.date for metric in daily_metrics))
-        
-        # Find highest model used (most frequent)
-        model_usage = {}
-        for metric in daily_metrics:
-            model_usage[metric.highest_model_used] = model_usage.get(metric.highest_model_used, 0) + metric.total_conversations
-        highest_model_used = max(model_usage, key=model_usage.get) if model_usage else None
-        
-        # Find costliest model
-        model_costs = {}
-        for metric in daily_metrics:
-            model_costs[metric.costliest_model] = model_costs.get(metric.costliest_model, 0) + metric.total_cost
-        costliest_model = max(model_costs, key=model_costs.get) if model_costs else None
-        
-        # Find least used model
-        model_counts = {}
-        for metric in daily_metrics:
-            if metric.least_used_model:
-                model_counts[metric.least_used_model] = model_counts.get(metric.least_used_model, 0) + 1
-        least_used_model = min(model_counts, key=model_counts.get) if model_counts else None
-        
-        # Calculate averages
-        avg_spending_per_day = total_spending / num_days if num_days > 0 else 0.0
-        avg_token_consumption_per_day = total_token_consumption / num_days if num_days > 0 else 0.0
-        
-        # Calculate average active subscriber utilization rate
-        avg_utilization_rate = sum(metric.active_subscriber_utilization_rate for metric in daily_metrics) / len(daily_metrics)
-        
-        # Calculate total cost across all metrics
-        total_cost = sum(metric.total_cost for metric in daily_metrics)
-        
-        # Build spends_trend and token_consumption_trend
-        # Group by date and sum costs/tokens across all regions
-        date_aggregates = {}
-        for metric in daily_metrics:
-            date_key = metric.date
-            if date_key not in date_aggregates:
-                date_aggregates[date_key] = {
-                    'cost': 0.0,
-                    'token_consumption': 0
-                }
-            date_aggregates[date_key]['cost'] += metric.total_cost
-            date_aggregates[date_key]['token_consumption'] += metric.avg_token_consumption
-        
-        # Convert to sorted list format
+            conditions.append(DailyMetric.region.in_(regions))
+        if start_date:
+            conditions.append(DailyMetric.date >= start_date)
+        if end_date:
+            conditions.append(DailyMetric.date <= end_date)
+
+        # 2) Aggregate query for summary metrics
+        agg_stmt = (
+            select(
+                func.coalesce(func.sum(DailyMetric.total_cost), 0).label("total_spendings"),
+                func.coalesce(
+                    func.sum(
+                        DailyMetric.total_prompt_tokens
+                        + DailyMetric.total_completion_tokens
+                    ),
+                    0,
+                ).label("total_tokens"),
+                func.coalesce(func.sum(DailyMetric.total_conversations), 0).label(
+                    "total_conversations"
+                ),
+                func.coalesce(
+                    func.avg(DailyMetric.active_subscriber_utilization_rate), 0
+                ).label("active_sub_utilization"),
+                func.count(func.distinct(DailyMetric.date)).label("num_days"),
+            )
+            .where(*conditions)
+        )
+
+        agg_row = self.db.execute(agg_stmt).one()
+
+        total_spendings = float(agg_row.total_spendings or 0)
+        total_tokens = int(agg_row.total_tokens or 0)
+        total_conversations = int(agg_row.total_conversations or 0)
+        num_days = int(agg_row.num_days or 0)
+
+        # average token consumption per conversation (overall)
+        if total_conversations > 0:
+            average_token_consumption = total_tokens / total_conversations
+        else:
+            average_token_consumption = 0.0
+
+        # average per-day spending (over days that had data)
+        if num_days > 0:
+            average_per_day_spending = total_spendings / num_days
+        else:
+            average_per_day_spending = 0.0
+
+        active_sub_utilization = float(agg_row.active_sub_utilization or 0.0)
+
+        # 3) "heighest_model_user" = model that most often appears as highest_model_used
+        top_model_stmt = (
+            select(
+                DailyMetric.highest_model_used,
+                func.count().label("cnt"),
+            )
+            .where(*conditions)
+            .group_by(DailyMetric.highest_model_used)
+            .order_by(func.count().desc())
+            .limit(1)
+        )
+
+        top_model_row = self.db.execute(top_model_stmt).first()
+        heighest_model_user = (
+            top_model_row.highest_model_used if top_model_row is not None else None
+        )
+
+        # 4) spends_trend = [{ date, cost }]
+        trend_stmt = (
+            select(
+                DailyMetric.date.label("date"),
+                func.sum(DailyMetric.total_cost).label("cost"),
+            )
+            .where(*conditions)
+            .group_by(DailyMetric.date)
+            .order_by(DailyMetric.date)
+        )
+
+        trend_rows = self.db.execute(trend_stmt).all()
         spends_trend = [
-            {
-                'date': date_key.isoformat(),
-                'cost': round(values['cost'], 2),
-                'token_consumption': int(values['token_consumption'])
-            }
-            for date_key, values in sorted(date_aggregates.items())
+            {"date": row.date, "cost": float(row.cost)} for row in trend_rows
         ]
-        
-        token_consumption_trend = [
-            {
-                'date': date_key.isoformat(),
-                'cost': round(values['cost'], 2),
-                'token_consumption': int(values['token_consumption'])
-            }
-            for date_key, values in sorted(date_aggregates.items())
-        ]
-        
-        # Build region_wise_spends
-        # Group by region and sum costs
-        region_aggregates = {}
-        for metric in daily_metrics:
-            region = metric.region
-            if region not in region_aggregates:
-                region_aggregates[region] = 0.0
-            region_aggregates[region] += metric.total_cost
-        
-        region_wise_spends = [
-            {
-                'region': region,
-                'spends': round(total_spend, 2)
-            }
-            for region, total_spend in sorted(region_aggregates.items(), key=lambda x: x[1], reverse=True)
-        ]
-        
+
+        # 5) Final payload
         return {
-            "highest_model_used": highest_model_used,
-            "avg_spending_per_day": round(avg_spending_per_day, 2),
-            "costliest_model": costliest_model,
-            "least_used_model": least_used_model,
-            "avg_token_consumption_per_day": round(avg_token_consumption_per_day, 2),
-            "active_subscriber_utilization_rate": round(avg_utilization_rate, 4),
-            "total_cost": round(total_cost, 2),
+            "total_spendings": total_spendings,
+            "heighest_model_user": heighest_model_user,
+            "average_token_consumption": average_token_consumption,
+            "average_per_day_spending": average_per_day_spending,
+            "active_sub_utilization": active_sub_utilization,
             "spends_trend": spends_trend,
-            "region_wise_spends": region_wise_spends,
-            # "token_consumption_trend": token_consumption_trend
         }
+
+
 
 def get_metrics_service() -> MetricsService:
     with get_session() as db:

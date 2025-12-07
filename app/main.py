@@ -79,11 +79,11 @@ async def get_metrics(regions: Optional[List[str]] = Query(None), start_date: da
     logger.info(f"Regions: {regions}, Start: {start_date}, End: {end_date}")
     try:
         metrics_service = get_metrics_service()
-        metrics = metrics_service.get_metrics(start_date, end_date, regions)
+        metrics = metrics_service.get_daily_metrics_summary(regions, start_date, end_date)
         return {
             "message": "success",
             "data": metrics,
-    }
+        }
     except Exception as e:
         logger.error(e)
         return {
