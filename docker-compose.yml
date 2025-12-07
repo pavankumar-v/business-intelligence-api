@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   postgres:
@@ -10,22 +10,63 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/bis_intel/data
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - bis-intel-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:alpine
     ports:
       - "6379:6379"
+    networks:
+      - bis-intel-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    env_file:
+      - .env.docker
+    container_name: fastapi-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
     volumes:
-      - redis_data:/bis_intel/data
+      - ./uploads:/app/uploads
+    networks:
+      - bis-intel-network
+
+  worker:
+    build: .
+    env_file:
+      - .env.docker
+    container_name: rq-worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      rq worker
+      --url redis://redis:6379/0
+      default
     networks:
       - bis-intel-network
 
 volumes:
   postgres_data:
-  redis_data:
 
 networks:
   bis-intel-network:
