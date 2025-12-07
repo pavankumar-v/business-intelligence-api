@@ -1,11 +1,11 @@
+from app.models.daily_model_metrics import DailyModelMetric
 from app.db.db import get_session
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from datetime import date
-from typing import Optional
 from app.models.daily_metric import DailyMetric
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
+from loguru import logger
 from app.models.daily_metric import DailyMetric  # adjust import
 
 class MetricsService:
@@ -65,7 +65,7 @@ class MetricsService:
 
         active_sub_utilization = float(agg_row.active_sub_utilization or 0.0)
 
-        # 3) "heighest_model_user" = model that most often appears as highest_model_used
+        # 3) "heighest_model_used" = model that most often appears as highest_model_used
         top_model_stmt = (
             select(
                 DailyMetric.highest_model_used,
@@ -78,7 +78,7 @@ class MetricsService:
         )
 
         top_model_row = self.db.execute(top_model_stmt).first()
-        heighest_model_user = (
+        heighest_model_used = (
             top_model_row.highest_model_used if top_model_row is not None else None
         )
 
@@ -93,23 +93,56 @@ class MetricsService:
             .order_by(DailyMetric.date)
         )
 
+        logger.info(f"{trend_stmt}")
+
         trend_rows = self.db.execute(trend_stmt).all()
         spends_trend = [
-            {"date": row.date, "cost": float(row.cost)} for row in trend_rows
+            {"date": row.date, "cost": round(row.cost, 2)} for row in trend_rows
         ]
 
         # 5) Final payload
         return {
-            "total_spendings": total_spendings,
-            "heighest_model_user": heighest_model_user,
-            "average_token_consumption": average_token_consumption,
-            "average_per_day_spending": average_per_day_spending,
-            "active_sub_utilization": active_sub_utilization,
+            "total_spendings": round(total_spendings, 2),
+            "heighest_model_used": heighest_model_used,
+            "average_token_consumption": round(average_token_consumption),
+            "average_per_day_spending": round(average_per_day_spending, 2),
+            "active_sub_utilization": round(active_sub_utilization, 2),
             "spends_trend": spends_trend,
         }
 
+    def get_model_cost_summary(self, regions: list[str] | None = None, start_date=None, end_date=None):
+        conditions = []
 
+        if regions:
+            conditions.append(DailyModelMetric.region.in_(regions))
 
+        if start_date:
+            conditions.append(DailyModelMetric.date >= start_date)
+
+        if end_date:
+            conditions.append(DailyModelMetric.date <= end_date)
+
+        stmt = (
+            select(
+                DailyModelMetric.model_name.label("model"),
+                func.sum(DailyModelMetric.total_cost).label("total_cost"),
+            )
+            .where(*conditions)
+            .group_by(DailyModelMetric.model_name)
+            .order_by(func.sum(DailyModelMetric.total_cost).desc())
+        )
+
+        rows = self.db.execute(stmt).all()
+
+        return [
+            {
+                "model": row.model,
+                "total_cost": float(row.total_cost),
+            }
+            for row in rows
+        ]
+
+        
 def get_metrics_service() -> MetricsService:
     with get_session() as db:
         return MetricsService(db)

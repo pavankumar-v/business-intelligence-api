@@ -82,7 +82,10 @@ async def get_metrics(regions: Optional[List[str]] = Query(None), start_date: da
         metrics = metrics_service.get_daily_metrics_summary(regions, start_date, end_date)
         return {
             "message": "success",
-            "data": metrics,
+            "data": {
+                "kpis": metrics,
+                "models_metrics": metrics_service.get_model_cost_summary(regions, start_date, end_date),
+            },
         }
     except Exception as e:
         logger.error(e)
