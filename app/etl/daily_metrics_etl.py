@@ -34,9 +34,11 @@ async def aggregate_daily_metrics(job_id: uuid.UUID) -> None:
             user_csv=user_csv_file,
             transaction_csv=transaction_csv_file
         )
-        
+
         db_dumping_service.dump_users()
         db_dumping_service.dump_transactions_in_chunks()
 
         aggregation_service = AggregationService(db=db, job_id=job_id)
+
         aggregation_service.aggregate_daily_metrics()
+        aggregation_service.aggregate_daily_model_metrics()

@@ -1,3 +1,4 @@
+from app.models.daily_model_metrics import DailyModelMetric
 import uuid
 
 from sqlalchemy import null, func, and_, case
@@ -245,7 +246,45 @@ class AggregationService():
         self.db.commit()
 
     def aggregate_daily_model_metrics(self):
-        pass
+        stmt = (
+            select(
+                Transaction.date.label("date"),
+                Transaction.region.label("region"),
+                Transaction.model_name.label("model_name"),
+                func.sum(Transaction.calculated_cost).label("total_cost"),
+                func.count(func.distinct(Transaction.conversation_id)).label(
+                    "conversation_count"
+                ),
+                func.sum(Transaction.token_count).label("token_consumption"),
+            )
+            .group_by(
+                Transaction.date,
+                Transaction.region,
+                Transaction.model_name,
+            )
+            .order_by(
+                Transaction.date,
+                Transaction.region,
+                Transaction.model_name,
+            )
+        )
+
+        rows = self.db.execute(stmt).all()
+
+        for row in rows:
+            dmm = DailyModelMetric(
+                date=row.date,
+                region=row.region,
+                model_name=row.model_name,
+                total_cost=row.total_cost,
+                conversation_count=row.conversation_count,
+                token_consumption=row.token_consumption,
+            )
+
+            # Composite PK (date, region, model_name) ensures merge works as upsert
+            self.db.merge(dmm)
+
+        self.db.commit()
 
     def aggregate_daily_company_metrics(self):
         pass
