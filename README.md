@@ -34,20 +34,21 @@ docker compose exec app alembic upgrade head
 
 ## Architecture
 
-<img width="1222" height="632" alt="Screenshot 2025-12-02 at 10 40 38 PM" src="https://github.com/user-attachments/assets/81f74c65-2bd1-4005-a575-2ba76488b0bc" />
+<img width="1215" height="583" alt="Screenshot 2025-12-08 at 8 12 11 AM" src="https://github.com/user-attachments/assets/27e63633-1211-4679-96c4-fc172792dc70" />
+
 
 ```
 ┌─────────────┐
 │   FRONTEND  │
 │             │
 │  [Upload]   │
-│  [Progress] │───WebSocket───┐
-│  [Dashboard]│               │
-└──────┬──────┘               │
-       │                      │
-       │ POST /upload         │
-       │ GET /dashboard       │
-       ▼                      ▼
+│  [Progress] │
+│  [Dashboard]│               
+└──────┬──────┘               
+       │                      
+       │ POST /upload        
+       │ GET /dashboard       
+       ▼                      
 ┌─────────────────────────────────┐
 │      FASTAPI BACKEND            │
 │                                 │
